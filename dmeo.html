@@ -1,0 +1,61 @@
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=0">
+    <script src="./index.js"></script>
+    <style type="text/css">
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: rgb(145, 161, 158);
+        }
+
+        .document {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .page {
+            background-color: #FFF;
+            width: 210mm;
+            height: 297mm;
+            margin: 0 auto;
+            page-break-after: always;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            overflow: hidden;
+
+            padding: 10mm;
+        }
+
+        @page {
+            size: 210mm 297mm;
+            margin: 0;
+        }
+
+        @media print {
+            .document {
+                gap: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="document">
+        <div class="page">
+            <div style="background-color: red; height: 300px; margin: 10px;"></div>
+            <div style="background-color: red; height: 300px; margin: 10px;"></div>
+            <div style="background-color: red; height: 400px; margin: 10px;"></div>
+            <div style="background-color: red; height: 400px; margin: 10px;"></div>
+            <div style="background-color: red; height: 400px; margin: 10px;"></div>
+        </div>
+    </div>
+
+</body>
+
+</html>
