@@ -1,15 +1,46 @@
-function printjs({ container, pageSize = { width: 0, height: 0 } }) {
-    this.pageSize = pageSize;
+/**  
+ * 打印指定节点内容的功能函数（目前可以对列表和普通无跨行表格自动分页） 
+ * 
+ * @example
+ * <div class='document' ><div class=".page"></div></div>
+ * <script>
+ *  new printjs({container: document.querySelector('.document')}).init();
+ * </script>
+ *  
+ * @param {Object} options - 打印选项对象  
+ * @param {HTMLElement} options.container - 需要处理的 HTML 节点  
+ * @param {string} [options.size='A4'] - 要打印的页面大小（默认为 'A4'）  
+ * @param {function} options.injectCallback - 注入页面时的回调函数，返回的 HTML 字符串将注入到页面中  
+ * @param {number} options.injectCallback.pageNum - 当前打印的页码  
+ * @param {number} options.injectCallback.totalPage - 总共需要打印的页数  
+ * @param {HTMLElement} options.injectCallback.pageNode - 当前打印页面的 HTML 元素  
+ */
+function printjs({ container, size = 'A4', injectCallback }) {
     this.container = container;
+    if (!container.id) {
+        container.id = 'id-' + Math.random().toString().substring(2);
+    }
+    this.containerId = container.id;
+    
 
     this.pageNodes = []; // 页面节点
     this.pages = []; // 构建的页面信息
 
 
-    this.pageContentHeight = 0;
+    this.pageContentHeight = 0; // 页面内容区域高度
+
+    this.pageSize = {};
+    if (size === 'A4') {
+        this.pageSize = { width: '210mm', height: '297mm' };
+    }
+
+    if (injectCallback) {
+        this.injectCallback = injectCallback;
+    }
 }
 
 printjs.prototype.init = function() {
+    this.injectStyle();
     this.calcSize();
 
     this.parseHtml();
@@ -27,6 +58,42 @@ printjs.prototype.calcSize = function() {
     let pt = getStyle('paddingTop', ele), pb = getStyle('paddingBottom', ele), height = getStyle('height', ele);
     this.pageContentHeight = parseFloat(height) - parseFloat(pt) - parseFloat(pb);
     console.log('内容高度：',this.pageContentHeight);
+}
+
+printjs.prototype.injectStyle = function() {
+    const style = document.createElement('style');
+    style.setAttribute('type', 'text/css');
+    style.appendChild(document.createTextNode(`
+        #${this.containerId} {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        #${this.containerId} .page {
+            background-color: #FFF;
+            width: ${this.pageSize.width};
+            height: ${this.pageSize.height};
+            margin: 0 auto;
+            page-break-after: always;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            overflow: hidden;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        @page {
+            size: ${this.pageSize.width} ${this.pageSize.height};
+            margin: 0;
+        }
+
+        @media print {
+            #${this.containerId} {
+                gap: 0;
+            }
+        }
+    `));
+    (document.querySelector('head') || document.querySelector('body')).appendChild(style);
 }
 
 printjs.prototype.parseHtml = function () {
@@ -80,8 +147,14 @@ printjs.prototype.buildPage = function () {
 }
 
 printjs.prototype.generatePage = function () {
-    this.pages.forEach(page => {
-        console.log(page)
+    this.pages.forEach((page, index) => {
+        if (this.injectCallback){
+            const res = this.injectCallback({ pageNum: index + 1, totalPage: this.pages.length, pageNode: page });
+            if (res !== undefined && res !== null) {
+                page.innerHTML += res;
+            }
+        }
+    
         this.container.appendChild(page);
     });
 }
@@ -93,7 +166,6 @@ printjs.prototype.checkPage = function(nodes = []) {
     document.body.appendChild(wrapper);
 
     if (wrapper.scrollHeight > this.pageContentHeight) {
-        console.log(nodes)
         document.body.removeChild(wrapper);
         return false;
     }
@@ -102,8 +174,7 @@ printjs.prototype.checkPage = function(nodes = []) {
 }
 
 printjs.prototype.createPage = function(node, children = []) {
-    let page = document.createElement('div');
-    page.className = node.className;
+    let page = node.cloneNode();
     Array.from(children).map(c => page.appendChild(c));
     return page;
 }
@@ -141,14 +212,3 @@ printjs.prototype.checkTablePage = function(node, currentTableNode) {
     pages.push(this.createPage(currentPage, [...currentPage.children, tableNode]));
     return pages;
 }
-
-window.addEventListener('load', () => {
-    let p = new printjs({ 
-        container: document.querySelector('.document'),
-        pageSize: {
-            width: 210 * 3.752,
-            height: 297 * 3.752,
-        }
-    });
-    p.init();
-})
